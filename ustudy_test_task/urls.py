@@ -1,9 +1,12 @@
+import os
 from django.contrib import admin
 from django.urls import path, include, re_path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # Schema view for API documentation
 schema_view = get_schema_view(
@@ -15,7 +18,7 @@ schema_view = get_schema_view(
         contact=openapi.Contact(email="contact@aralhub.local"),
         license=openapi.License(name="BSD License"),
     ),
-    # url='https://niagara.aralhub.uz/',
+    url=os.getenv('DEPLOYMENT_URL'),
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
