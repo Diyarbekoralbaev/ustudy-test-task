@@ -8,7 +8,6 @@ services:
       - .:/app
     depends_on:
       - db
-      - redis
     ports:
       - "${PROJECT_PORT}:8000"
     networks:
@@ -28,16 +27,8 @@ services:
       - ustudy_test_task_network
     container_name: ustudy_test_task_db
 
-  redis:
-    image: redis:latest
-    networks:
-      - redis_network
-    container_name: ustudy_test_task_redis
-
 volumes:
   postgres_data:
 
 networks:
   ustudy_test_task_network:
-  redis_network:
-    external: true
