@@ -24,7 +24,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - ustudy_test_task_network
-    container_name: ustudy_test_task_db
+    container_name: ${DB_HOST}
 
 volumes:
   postgres_data:
