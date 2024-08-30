@@ -13,8 +13,11 @@ class TaskSerializer(serializers.ModelSerializer):
     def validate_deadline(self, value):
         if value < timezone.now():
             raise serializers.ValidationError('Deadline must be in the future')
-        if value.year > value.created_at:
-            raise serializers.ValidationError('Deadline must be in the future')
+        return value
+
+    def validate_status(self, value):
+        if value not in ['new', 'in_progress', 'completed']:
+            raise serializers.ValidationError('Status must be new, in_progress or completed')
         return value
 
     def create(self, validated_data):
