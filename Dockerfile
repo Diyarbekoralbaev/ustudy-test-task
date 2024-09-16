@@ -21,4 +21,4 @@ COPY . .
 COPY .env .env
 
 # Command to run the application (replace main_new.py with your main file)
-CMD ["gunicorn --workers 3 --bind unix:/app/ustudy_test_task.sock ustudy_test_task.wsgi:application"]
+CMD ["gunicorn --workers 3 --bind 0.0.0.0:8000 ustudy_test_task.wsgi:application"]
