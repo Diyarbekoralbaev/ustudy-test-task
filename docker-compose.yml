@@ -8,11 +8,12 @@ services:
       - .:/app
     depends_on:
       - db
+      - redis
     ports:
       - "${PROJECT_PORT}:8000"
     networks:
       - ustudy_test_task_network
-    container_name: ustudy_test_task_web
+    container_name: ${WEB_CONTAINER_NAME}
 
   db:
     image: postgres:16.4
@@ -25,6 +26,40 @@ services:
     networks:
       - ustudy_test_task_network
     container_name: ${DB_HOST}
+
+  redis:
+    image: redis:latest
+    networks:
+      - ustudy_test_task_network
+    container_name: ${REDIS_CONTAINER_NAME}
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A ustudy_test_task worker --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+        - db
+        - redis
+    networks:
+        - ustudy_test_task_network
+    container_name: ${CELERY_CONTAINER_NAME}
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A ustudy_test_task beat --loglevel=info
+    volumes:
+      - .:/app
+    depends_on:
+        - db
+        - redis
+    networks:
+        - ustudy_test_task_network
+    container_name: ${CELERY_BEAT_CONTAINER_NAME}
 
 volumes:
   postgres_data:
