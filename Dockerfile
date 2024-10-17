@@ -9,12 +9,20 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Install dependencies and system packages required for the app
+RUN apt-get update \
+    && apt-get install -y \
+        libpq-dev \
+        build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements.txt file into the container
 COPY requirements.txt .
 
 # Install the Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip install psycopg[pool]
 
 # Copy the rest of the application code into the container
 COPY . .
