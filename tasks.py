@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 import time
 from click import style
@@ -6,6 +7,9 @@ from rich.console import Console
 from rich.style import Style
 from rich.panel import Panel
 from rich.text import Text
+from dotenv import load_dotenv
+
+load_dotenv()
 
 console = Console()
 
@@ -69,7 +73,7 @@ def wait_for_postgres(c, max_retries=5, delay=5):
     while retries < max_retries:
         try:
             # Try to connect to the database
-            result = c.run('docker exec -i ustudy_test_task_db pg_isready -U postgres', hide=True, warn=True)
+            result = c.run(f'docker exec -i {os.getenv("POSTGRES_CONTAINER_NAME")} pg_isready -U postgres', hide=True, warn=True)
             if result.ok:
                 console.print("PostgreSQL is ready!", style=success_style)
                 return True
@@ -87,7 +91,7 @@ def wait_for_postgres(c, max_retries=5, delay=5):
 def test(c):
     print_header("Running Tests")
     console.print("Running tests...", style=info_style)
-    result = c.run('docker exec -i ustudy_test_task_web python manage.py test', warn=True)
+    result = c.run('docker exec -i {os.getenv("WEB_CONTAINER_NAME")} python manage.py test', warn=True)
     if result.failed:
         console.print("Tests failed. Aborting build.", style=error_style)
         raise Exception("Tests failed. Build aborted.")
@@ -116,13 +120,13 @@ def prepare(c):
     print_header("Preparing Application")
     console.print("Preparing the application...", style=info_style)
     with console.status("[bold green]Applying migrations..."):
-        c.run('docker exec -i ustudy_test_task_web python manage.py makemigrations')
+        c.run(f'docker exec -i {os.getenv("WEB_CONTAINER_NAME")} python manage.py makemigrations')
     console.print("Migrations created.", style=success_style)
     with console.status("[bold green]Applying migrations..."):
-        c.run('docker exec -i ustudy_test_task_web python manage.py migrate')
+        c.run(f'docker exec -i {os.getenv("WEB_CONTAINER_NAME")} python manage.py migrate')
     console.print("Migrations applied.", style=success_style)
     with console.status("[bold green]Collecting static files..."):
-        c.run('docker exec -i ustudy_test_task_web python manage.py collectstatic --noinput')
+        c.run(f'docker exec -i {os.getenv("WEB_CONTAINER_NAME")} python manage.py collectstatic --noinput')
     console.print("Static files collected.", style=success_style)
     print_footer("Application prepared.")
 
@@ -192,7 +196,7 @@ def backupdb(c):
     print_header("Backing Up Database")
     console.print("Backing up the database...", style=info_style)
     backup_cmd = (
-        'docker exec -i ustudy_test_task_db pg_dump -U postgres -d ustudy_task -F c -b -v -f /tmp/backup.sql'
+        f'docker exec -i {os.getenv("POSTGRES_CONTAINER_NAME")} pg_dump -U postgres -d ustudy_task -F c -b -v -f /tmp/backup.sql'
     )
     result = c.run(backup_cmd, warn=True)
     if result.failed:
@@ -200,7 +204,7 @@ def backupdb(c):
         raise Exception("Backup failed.")
 
     # Copy the backup file from the Docker container to the local machine
-    c.run('docker cp ustudy_test_task_db:/tmp/backup.sql ./backup.sql')
+    c.run(f'docker cp {os.getenv("POSTGRES_CONTAINER_NAME")}:/tmp/backup.sql ./backup.sql')
 
     print_footer("Backup completed.")
 
@@ -210,17 +214,17 @@ def restoredb(c):
     print_header("Restoring Database")
     console.print("Restoring the database...", style=info_style)
     drop_cmd = (
-        'docker exec -i ustudy_test_task_db psql -U postgres -c "DROP DATABASE IF EXISTS ustudy_task;"'
+        f'docker exec -i {os.getenv("POSTGRES_CONTAINER_NAME")} psql -U postgres -c "DROP DATABASE IF EXISTS ustudy_task;"'
     )
     create_cmd = (
-        'docker exec -i ustudy_test_task_db psql -U postgres -c "CREATE DATABASE ustudy_task;"'
+        f'docker exec -i {os.getenv("POSTGRES_CONTAINER_NAME")} psql -U postgres -c "CREATE DATABASE ustudy_task;"'
     )
     restore_cmd = (
-        'docker exec -i ustudy_test_task_db pg_restore -U postgres -d ustudy_task /tmp/backup.sql'
+        f'docker exec -i {os.getenv("POSTGRES_CONTAINER_NAME")} pg_restore -U postgres -d ustudy_task /tmp/backup.sql'
     )
 
     # Copy the backup file from the local machine to the Docker container
-    c.run('docker cp ./backup.sql ustudy_test_task_db:/tmp/backup.sql')
+    c.run(f'docker cp ./backup.sql {os.getenv("POSTGRES_CONTAINER_NAME")}:/tmp/backup.sql')
 
     console.print("Dropping the existing database...", style=info_style)
     drop_result = c.run(drop_cmd, warn=True)
@@ -247,7 +251,7 @@ def restoredb(c):
 def demodb(c):
     print_header("Loading Demo Data")
     console.print("Loading demo data...", style=info_style)
-    c.run('docker exec -i ustudy_test_task_web python manage.py load_demo_data')
+    c.run(f'docker exec -i {os.getenv("WEB_CONTAINER_NAME")} python manage.py load_demo_data')
     print_footer("Demo data loaded.")
 
 
@@ -255,9 +259,9 @@ def demodb(c):
 def cleardb(c):
     print_header("Clearing Database")
     console.print("Clearing the database...", style=info_style)
-    c.run('docker exec -i ustudy_test_task_db psql -U postgres -c "DROP DATABASE IF EXISTS ustudy_task;"')
-    c.run('docker exec -i ustudy_test_task_db psql -U postgres -c "CREATE DATABASE ustudy_task;"')
-    c.run('docker exec -i ustudy_test_task_web python manage.py migrate')
+    c.run(f'docker exec -i {os.getenv("POSTGRES_CONTAINER_NAME")} psql -U postgres -c "DROP DATABASE IF EXISTS ustudy_task;"')
+    c.run(f'docker exec -i {os.getenv("POSTGRES_CONTAINER_NAME")} psql -U postgres -c "CREATE DATABASE ustudy_task;"')
+    c.run(f'docker exec -i {os.getenv("WEB_CONTAINER_NAME")} python manage.py migrate')
     print_footer("Database cleared.")
 
 
@@ -274,4 +278,4 @@ def purge(c):
 def webshell(c):
     print_header("Accessing Django Shell")
     console.print("Accessing the Django shell...", style=info_style)
-    c.run('docker exec -i ustudy_test_task_web python manage.py shell')
+    c.run(f'docker exec -i {os.getenv("WEB_CONTAINER_NAME")} python manage.py shell')
